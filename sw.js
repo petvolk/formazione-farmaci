@@ -7,6 +7,7 @@ const FILE = [
   "manifest.webmanifest",
   "icon-192.png",
   "icon-512.png",
+  "icon-maskable-512.png",
   "apple-touch-icon.png",
   "img/allergie_02.jpg",
   "img/allergie_04.jpg",
