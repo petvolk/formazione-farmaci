@@ -242,6 +242,18 @@ footer { font-size: var(--fs-small); color: var(--muted); border-top: 1px solid 
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Farmaci">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
+<style>
+/* Riquadro «Installa l'app»: c'e' solo nell'app web e si vede solo se Chrome dice che si puo' installare. */
+#installa { border-left: 4px solid var(--accent); }
+#installa[hidden] { display: none; }
+#installa h3 { margin: 0; color: var(--accent); }
+#installa button { display: flex; align-items: center; justify-content: center; min-height: 3.4rem; padding: .5rem 1rem; width: 100%;
+  background: var(--btn); border: 2px solid var(--accent); border-radius: 10px; color: var(--fg); font: inherit; font-weight: 700;
+  font-size: 1.15rem; line-height: 1.25; cursor: pointer; }
+#installa button:active { background: var(--btn-on); }
+#installa button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media print { #installa { display: none; } }
+</style>
 </head>
 <body>
 <main>
@@ -254,6 +266,12 @@ footer { font-size: var(--fs-small); color: var(--muted); border-top: 1px solid 
   <div class="box regola">
     <p><strong>Questa guida informa, non abilita.</strong> Il farmaco lo dà solo chi ha fatto la formazione specifica su quel bambino ed è autorizzato nel registro.</p>
     <p>Senza questa formazione non si fa nulla di propria iniziativa: si chiama il 112 e si fa solo quello che dice l'infermiere.</p>
+  </div>
+
+  <div class="box" id="installa" hidden>
+    <h3>Tieni la guida sul telefono</h3>
+    <p>Con un tocco la guida diventa un'icona nella schermata Home e <strong>si apre anche senza internet</strong>.</p>
+    <button type="button" id="installa-btn">Installa l'app</button>
   </div>
 
   <div class="box app">
@@ -774,6 +792,19 @@ footer { font-size: var(--fs-small); color: var(--muted); border-top: 1px solid 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
 }
+/* Pulsante «Installa l'app»: Chrome (Android) avvisa con beforeinstallprompt quando l'installazione e' possibile; senza avviso il riquadro resta nascosto. */
+(function () {
+  var riquadro = document.getElementById('installa'), tasto = document.getElementById('installa-btn'), proposta = null;
+  if (!riquadro || !tasto) return;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); proposta = e; riquadro.hidden = false; });
+  tasto.addEventListener('click', function () {
+    if (!proposta) return;
+    var p = proposta; proposta = null; riquadro.hidden = true;
+    p.prompt();
+    if (p.userChoice) p.userChoice.then(function (r) { if (r && r.outcome !== 'accepted') { proposta = p; riquadro.hidden = false; } });
+  });
+  window.addEventListener('appinstalled', function () { proposta = null; riquadro.hidden = true; });
+})();
 </script>
 </body>
 </html>
