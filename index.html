@@ -253,16 +253,29 @@ footer { font-size: var(--fs-small); color: var(--muted); border-top: 1px solid 
 <meta name="apple-mobile-web-app-title" content="Farmaci">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
-/* Riquadro «Installa l'app»: c'e' solo nell'app web e si vede solo se Chrome dice che si puo' installare. */
+/* Installazione dell'app (solo nell'app web). Riquadro nella guida + striscia sulla schermata delle emergenze: si vedono solo se
+   Chrome dice che si puo' installare; il suggerimento «tre puntini» solo su Android se Chrome tace. Nell'app gia' installata non compaiono. */
 #installa { border-left: 4px solid var(--accent); }
-#installa[hidden] { display: none; }
-#installa h3 { margin: 0; color: var(--accent); }
-#installa button { display: flex; align-items: center; justify-content: center; min-height: 3.4rem; padding: .5rem 1rem; width: 100%;
-  background: var(--btn); border: 2px solid var(--accent); border-radius: 10px; color: var(--fg); font: inherit; font-weight: 700;
-  font-size: 1.15rem; line-height: 1.25; cursor: pointer; }
-#installa button:active { background: var(--btn-on); }
-#installa button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-@media print { #installa { display: none; } }
+#installa[hidden], #installa-btn[hidden], #installa-aiuto[hidden] { display: none; }
+#installa h3 { margin: 0; color: var(--accent); font-size: 1.35rem; }
+#installa p { margin: 0; }
+#installa-btn { display: flex; align-items: center; justify-content: center; min-height: 4rem; padding: .5rem 1rem; width: 100%;
+  background: var(--btn); border: 3px solid var(--accent); border-radius: 10px; color: var(--fg); font: inherit; font-weight: 700;
+  font-size: 1.3rem; line-height: 1.25; cursor: pointer; }
+#installa-btn:active, #installa-striscia:active { background: var(--btn-on); }
+#installa-btn:focus-visible, #installa-striscia:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+/* Un solo evidenziamento, di meno di un secondo, quando il riquadro compare. Chi ha «riduci animazioni» non lo vede. */
+@keyframes installa-evid { 0% { box-shadow: 0 0 0 0 var(--accent); } 100% { box-shadow: 0 0 0 14px rgba(0, 0, 0, 0); } }
+#installa:not([hidden]) { animation: installa-evid .9s ease-out 1; }
+@media (prefers-reduced-motion: reduce) { #installa:not([hidden]) { animation: none; } }
+/* Striscia sottile in fondo alla schermata delle emergenze, sotto il 112 e i temi: mai davanti al 112. Non e' rossa: il rosso e' del 112.
+   Lo spazio e' riservato fin dall'inizio (invisibile): se comparisse dopo, la schermata e' centrata e il 112 salterebbe verso l'alto. */
+#installa-striscia { display: flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: .3rem .8rem; width: 100%;
+  background: transparent; border: 2px solid var(--accent); border-radius: 10px; color: var(--accent); font: inherit; font-weight: 700;
+  font-size: 1rem; line-height: 1.25; cursor: pointer; visibility: hidden; }
+#installa-striscia.pronta { visibility: visible; }
+@media (display-mode: standalone) { #installa-striscia { display: none; } }
+@media print { #installa, #installa-striscia { display: none; } }
 </style>
 </head>
 <body>
@@ -281,7 +294,8 @@ footer { font-size: var(--fs-small); color: var(--muted); border-top: 1px solid 
   <div class="box" id="installa" hidden>
     <h3>Tieni la guida sul telefono</h3>
     <p>Con un tocco la guida diventa un'icona nella schermata Home e <strong>si apre anche senza internet</strong>.</p>
-    <button type="button" id="installa-btn">Installa l'app</button>
+    <button type="button" id="installa-btn" hidden>Installa l'app</button>
+    <p id="installa-aiuto" hidden><strong>Per installarla:</strong> tocca i tre puntini in alto a destra e poi «Installa app». Se l'hai già installata, non serve.</p>
   </div>
 
   <div class="box app">
@@ -307,6 +321,7 @@ footer { font-size: var(--fs-small); color: var(--muted); border-top: 1px solid 
       <li><a href="#febbre"><i class="ico i-febbre" aria-hidden="true"></i><span>Febbre</span></a></li>
       <li><a href="#da-casa"><i class="ico i-zaino" aria-hidden="true"></i><span>Farmaci portati da casa</span></a></li>
     </ul>
+    <button type="button" id="installa-striscia">Installa l'app sul telefono</button>
     <a class="apri-guida" href="#inizio">Apri la guida completa</a>
   </div>
 
@@ -802,18 +817,27 @@ footer { font-size: var(--fs-small); color: var(--muted); border-top: 1px solid 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
 }
-/* Pulsante «Installa l'app»: Chrome (Android) avvisa con beforeinstallprompt quando l'installazione e' possibile; senza avviso il riquadro resta nascosto. */
+/* Installazione: Chrome (Android) avvisa con beforeinstallprompt quando si puo' installare. Nell'app gia' installata (display-mode standalone) non si fa nulla.
+   Se Chrome tace su un telefono Android, dopo 3,5 secondi compare il suggerimento «tre puntini > Installa app». */
 (function () {
-  var riquadro = document.getElementById('installa'), tasto = document.getElementById('installa-btn'), proposta = null;
-  if (!riquadro || !tasto) return;
-  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); proposta = e; riquadro.hidden = false; });
-  tasto.addEventListener('click', function () {
+  var riq = document.getElementById('installa'), btn = document.getElementById('installa-btn'), aiuto = document.getElementById('installa-aiuto'),
+      str = document.getElementById('installa-striscia'), proposta = null, fatto = false;
+  if (!riq || !btn || !aiuto || !str) return;
+  if ((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true) { str.style.display = 'none'; return; }
+  function mostra() { riq.hidden = false; btn.hidden = false; aiuto.hidden = true; str.classList.add('pronta'); }
+  function nascondi() { riq.hidden = true; str.classList.remove('pronta'); }
+  function installa() {
     if (!proposta) return;
-    var p = proposta; proposta = null; riquadro.hidden = true;
+    var p = proposta; proposta = null; nascondi();
     p.prompt();
-    if (p.userChoice) p.userChoice.then(function (r) { if (r && r.outcome !== 'accepted') { proposta = p; riquadro.hidden = false; } });
-  });
-  window.addEventListener('appinstalled', function () { proposta = null; riquadro.hidden = true; });
+    if (p.userChoice) p.userChoice.then(function (r) { if (r && r.outcome !== 'accepted') { proposta = p; mostra(); } });
+  }
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); proposta = e; mostra(); });
+  btn.addEventListener('click', installa); str.addEventListener('click', installa);
+  window.addEventListener('appinstalled', function () { fatto = true; proposta = null; nascondi(); });
+  setTimeout(function () {
+    if (!proposta && !fatto && /Android/i.test(navigator.userAgent)) { riq.hidden = false; btn.hidden = true; aiuto.hidden = false; }
+  }, 3500);
 })();
 </script>
 </body>
