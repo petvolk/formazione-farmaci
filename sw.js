@@ -1,7 +1,7 @@
 /* Salva la guida nel telefono (generato da genera_webapp.py: non si modifica a mano).
    Prima volta: copia tutti i file. Poi: risponde subito dalla copia e, se c'e' rete, la aggiorna per la volta dopo.
    Una versione nuova della guida ha un'impronta diversa: installa la sua copia e cancella le vecchie. */
-const CACHE = 'farmaci-1.9-1e1f245c';
+const CACHE = 'farmaci-1.9-00a310d3';
 const FILE = [
   "index.html",
   "manifest.webmanifest",
